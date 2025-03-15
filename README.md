@@ -84,9 +84,5 @@ python app.py
 ## Contributing
 Contributions are welcome! Feel free to fork the repository and submit a pull request.
 
-## License
-This project is licensed under the **MIT License**.
 
-## Contact
-For queries or support, contact **your-email@example.com** or visit our [GitHub Repository](https://github.com/your-username/honeyfile-security).
 
