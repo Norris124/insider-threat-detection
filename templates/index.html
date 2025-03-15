@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Honey File Logs with AI Analysis</title>
+    <script>
+        function startEventSource() {
+            const eventSource = new EventSource("/live-logs");
+
+            eventSource.onmessage = function(event) {
+                const logList = document.getElementById("log-list");
+                const logItem = document.createElement("li");
+                const logData = JSON.parse(event.data);
+                logItem.innerHTML = `<strong>📄 ${logData.filename} - ${logData.event}</strong><br>
+                                     🧠 <i>${logData.ai_assessment}</i> <br> ⏰ ${logData.timestamp}`;
+                logList.insertBefore(logItem, logList.firstChild);
+            };
+        }
+        window.onload = startEventSource;
+    </script>
+</head>
+<body>
+    <h1>📡 Live Honey File Logs with AI Analysis</h1>
+    <ul id="log-list"></ul>
+</body>
+</html>

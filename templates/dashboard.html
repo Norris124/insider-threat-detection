@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Dashboard</title>
+
+    <!-- Bootstrap & FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS -->
+    <style>
+        /* Light Theme */
+        body {
+            background-color: #f8f9fa;
+            color: #343a40;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #343a40;
+        }
+
+        /* Alerts Section */
+        .alert-box {
+            max-height: 350px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #ffffff;
+        }
+        .alert-item {
+            background-color: #f1f1f1;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+        .alert-item:hover {
+            background-color: #e9ecef;
+        }
+        .alert-title {
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .alert-details {
+            display: none; /* Hide details initially */
+            margin-top: 5px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            width: 300px;
+            height: 300px;
+            margin: auto;
+        }
+
+        /* Button Styling */
+        .btn-show-more {
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-show-more:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 Risk Dashboard</h1>
+
+    <div class="row">
+        <!-- Alerts Box -->
+        <div class="col-md-6">
+            <div class="card">
+                <h2>🚨 Latest Alerts</h2>
+                <div class="alert-box" id="alert-box">Loading alerts...</div>
+            </div>
+        </div>
+
+        <!-- Risk Charts -->
+        <div class="col-md-6">
+            <div class="card">
+                <h2>🛑 Risk Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="riskChart"></canvas>
+                </div>
+                <p class="text-center">Low: <span id="low-count">0</span> | Medium: <span id="medium-count">0</span> | High: <span id="high-count">0</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let riskChartInstance = null; // Store the Chart.js instance
+
+    // Fetch latest alerts and populate the UI
+    function fetchAlerts() {
+        fetch('/logs')
+            .then(response => response.json())
+            .then(data => {
+                const alertBox = document.getElementById("alert-box");
+                alertBox.innerHTML = "";
+
+                if (data.length === 0) {
+                    alertBox.innerHTML = "<p>No alerts found.</p>";
+                    return;
+                }
+
+                data.forEach((log, index) => {
+                    const alertItem = document.createElement("div");
+                    alertItem.classList.add("alert-item");
+
+                    alertItem.innerHTML = `
+                        <p class="alert-title">⚠ ${log.filename} - ${log.event}</p>
+                        <p><strong>Risk:</strong> ${log.ai_assessment.split(":")[0]}</p>
+                        <button class="btn-show-more" onclick="toggleDetails(${index})">Show More</button>
+                        <div class="alert-details" id="details-${index}" style="display:none;">
+                            <p>${log.ai_assessment}</p>
+                            <p>🕒 ${log.timestamp}</p>
+                        </div>
+                    `;
+                    alertBox.appendChild(alertItem);
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching alerts:", error);
+                document.getElementById("alert-box").innerHTML = "<p>Error loading alerts.</p>";
+            });
+    }
+
+    // Toggle Show More Details
+    function toggleDetails(index) {
+        const details = document.getElementById(`details-${index}`);
+        details.style.display = details.style.display === "none" ? "block" : "none";
+    }
+
+    // Fetch risk summary and populate chart
+    function fetchRiskSummary() {
+        fetch('/risk-summary')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("low-count").textContent = data.low;
+                document.getElementById("medium-count").textContent = data.medium;
+                document.getElementById("high-count").textContent = data.high;
+
+                const ctx = document.getElementById('riskChart').getContext('2d');
+
+                // Destroy previous chart if exists
+                if (riskChartInstance) {
+                    riskChartInstance.destroy();
+                }
+
+                riskChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                        datasets: [{
+                            data: [data.low, data.medium, data.high],
+                            backgroundColor: ['green', 'orange', 'red']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching risk summary:", error);
+            });
+    }
+
+    // Auto-refresh alerts & risk chart every 5 seconds
+    setInterval(fetchAlerts, 5000);
+    setInterval(fetchRiskSummary, 10000);
+
+    // Initial load
+    fetchAlerts();
+    fetchRiskSummary();
+</script>
+
+</body>
+</html>
